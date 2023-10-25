@@ -11,7 +11,7 @@ MUpdater::MUpdater(QString maintananceToolPath, QString organisation, QString ap
 
     //load color from qsetting:
     if(doAutoUpdateIfEnabled && getAutoSearchForUpdateStatus()) {
-        this->checkForUpdates();
+        this->checkForUpdates(true);
     }
 
 #ifndef Q_OS_WEB
@@ -52,11 +52,6 @@ bool MUpdater::getAutoSearchForUpdateStatus()
     return (settingOwnColor.contains("AUTO_SEARCH_FOR_UPDATE")) ? settingOwnColor.value("AUTO_SEARCH_FOR_UPDATE").toBool() : true;
 }
 
-void MUpdater::setAutoShowMessageBox(const bool &status)
-{
-    showMsgBox = status;
-}
-
 bool MUpdater::showUpdateMessageBox()
 {
     return zustandWechseln("showUpdateMessageBox()");
@@ -77,10 +72,11 @@ MUpdater::UPDATE_STATUS MUpdater::getStatus() const
     return status;
 }
 
-void MUpdater::setStatus(const UPDATE_STATUS &status, const QString &error_msg)
+void MUpdater::setStatus(const UPDATE_STATUS &status, const QString &error_msg, const QString &extraErrorInfo)
 {
     this->status = status;
     this->error = error_msg;
+    this->extraErrorInfo = extraErrorInfo;
 }
 
 
@@ -115,14 +111,44 @@ QString MUpdater::getStatusStr()
     return "";
 }
 
-bool MUpdater::checkForUpdates()
+bool MUpdater::checkForUpdates(bool showMessageBox)
 {
+    this->showMsgBox = showMessageBox;
     return zustandWechseln("checkForUpdates()");
 }
 
 bool MUpdater::startUpdate()
 {
     return zustandWechseln("startUpdate()");
+}
+
+bool MUpdater::resetAll()
+{
+    newVersion = "";
+
+    if(this->updateMsgBox != nullptr) {
+        disconnect(updateMsgBox, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(updateDialogButtonClicked(QAbstractButton*)));
+        updateMsgBox->deleteLater();
+        updateMsgBox = nullptr;
+    }
+
+
+    for(auto e : {&this->maintaneceToolPrz, &this->updaterPrz}) {
+        if(e->state() == QProcess::Running) {
+            e->terminate();
+            if(!e->waitForFinished(1000)) {
+                e->kill();
+                if(!e->waitForFinished(1000)) {
+                    setStatus(UPDATE_ERROR, "Erneute Suche nach Updates fehlgeschlagen!", "Konnte laufenden Prozess nicht beenden!");
+                    return false;    //Error
+                }
+
+            }
+        }
+    }
+
+    setStatus(UPDATE_STATUS::NOT_CHECKED);
+    return true;
 }
 
 void MUpdater::updateDialogButtonClicked(QAbstractButton *button)
@@ -150,13 +176,17 @@ bool MUpdater::zustandWechseln(const QString &action, const QString &value)
 {
     switch (this->status) {
 
-    case UP_TO_DATE:
+    case UP_TO_DATE: {
         if(action == "checkForUpdates()") {
-            setStatus(UPDATE_STATUS::NOT_CHECKED);
-            return zustandWechseln("checkForUpdates()");             // no status changes! --> no emits        --> return
+            if(!resetAll())
+                return false; // Error
+            else
+                return zustandWechseln("checkForUpdates()");             // no status changes! --> no emits        --> return
         } else {
             return false;   //Error
         }
+        break;
+    }
     case NOT_CHECKED: {
         if(action == "checkForUpdates()") {
             do_checkForUpdates();
@@ -182,7 +212,7 @@ bool MUpdater::zustandWechseln(const QString &action, const QString &value)
             }
         } else if(action == "updateDialogButtonClicked()") {
             if(value == "AcceptRole") {
-                startUpdate();
+                startUpdate(); // zustand_wechseln(action == "startUpdate()") mit case UPDTAE_NEEDED -> run do_strat_update();
             } else {
                 setStatus(UPDATE_STATUS::UPDTAE_NEEDED);
             }
@@ -194,19 +224,25 @@ bool MUpdater::zustandWechseln(const QString &action, const QString &value)
         }
         break;
     }
-    case UPDATING:
+    case UPDATING: {
         if(action == "updaterFinished()") {
-            if(value == "QProcess::NormalExit;ExitValue==0") {
-                setStatus(UPDATE_STATUS::UPDATE_FINISHED, "Update Erfogreich ausgeführt!");
-            } else {
-                QString err = updaterPrz.readAllStandardOutput() + updaterPrz.readAllStandardError();
-                QString output = updaterPrz.readAllStandardOutput();
-                setStatus(UPDATE_STATUS::UPDATE_ERROR, "Process execution failed: " + (err.isEmpty() ? output : err));
-            }
+            do_updaterFinished(value);
+        } else {
+            return false;
         }
-        return false;
-    case UPDATE_ERROR:
-        return false;
+        break;
+    }
+    case UPDATE_ERROR: {
+        if(action == "checkForUpdates()") {
+            if(!resetAll())
+                return false; // Error
+            else
+                return zustandWechseln("checkForUpdates()");             // no status changes! --> no emits        --> return
+        } else {
+            return false;   //Error
+        }
+        break;
+    }
     case NO_UPDATER:
         return false;
     case UPDATE_FINISHED:
@@ -230,15 +266,7 @@ void MUpdater::do_checkForUpdates()
         // Start the updater process
         updaterPrz.start(maintananceToolPath, QStringList() << "check-updates");
         if(updaterPrz.state() == QProcess::ProcessState::NotRunning && updaterPrz.exitCode() != 0) {
-            QVector<QString> errorDescriptions = {
-                /*0*/ "The process failed to start. Either the invoked program is missing, or you may have insufficient permissions or resources to invoke the program.",
-                /*1*/ "The process crashed some time after starting successfully.",
-                /*2*/ "The last waitFor...() function timed out. The state of QProcess is unchanged, and you can try calling waitFor...() again.",
-                /*3*/ "An error occurred when attempting to read from the process. For example, the process may not be running.",
-                /*4*/ "An error occurred when attempting to write to the process. For example, the process may not be running, or it may have closed its input channel.",
-                /*5*/ "An unknown error occurred. This is the default return value of error()."
-            };
-            setStatus(UPDATE_STATUS::UPDATE_ERROR, "Start updater failed: " + (updaterPrz.error() < 6 ? errorDescriptions.at(updaterPrz.error()) : "Qt Internal Error!"));
+            setStatus(UPDATE_STATUS::UPDATE_ERROR, "Start updater failed!", this->getQProzessStartErrorStr(updaterPrz.error()));
         } else {
             setStatus(UPDATE_STATUS::CHECKING);
         }
@@ -272,8 +300,8 @@ void MUpdater::do_UpdateCheckFinished(const QString & value)
             setStatus(UPDATE_STATUS::UP_TO_DATE);
         }
     } else {
-        QString err = updaterPrz.readAllStandardOutput() + updaterPrz.readAllStandardError();
-        setStatus(UPDATE_STATUS::UPDATE_ERROR, "Process execution failed: " + (err.isEmpty() ? output : err));
+        QString err =  updaterPrz.readAllStandardError();
+        setStatus(UPDATE_STATUS::UPDATE_ERROR, "Update fehlgeschlagen!", (err.isEmpty() ? output : err));
     }
 }
 
@@ -295,11 +323,40 @@ void MUpdater::do_startUpdate()
         qDebug() << "Start MaintenanceTool...";
         maintaneceToolPrz.start(maintananceToolPath);
         if(maintaneceToolPrz.state() == QProcess::NotRunning || maintaneceToolPrz.exitCode() != 0) {
-            setStatus(UPDATE_STATUS::UPDATE_ERROR, "Start MaintenanceTool failed");
+            setStatus(UPDATE_STATUS::UPDATE_ERROR, "Start MaintenanceTool failed", this->getQProzessStartErrorStr(maintaneceToolPrz.error()));
         } else {
             setStatus(UPDATE_STATUS::UPDATING);
         }
     }
 #endif
+}
+
+void MUpdater::do_updaterFinished(const QString &value)
+{
+    if(value == "QProcess::NormalExit;ExitValue==0") {
+        setStatus(UPDATE_STATUS::UPDATE_FINISHED, "Update Erfogreich ausgeführt!");
+    } else {
+        QString err =  updaterPrz.readAllStandardError();
+        QString output = (err.isEmpty() ? updaterPrz.readAllStandardOutput() : err);
+        setStatus(UPDATE_STATUS::UPDATE_ERROR, "Konnte Maintanace Programm nicht starten!", output);
+    }
+}
+
+QString MUpdater::getQProzessStartErrorStr(unsigned int error)
+{
+    QVector<QString> errorDescriptions = {
+        /*0*/ "The process failed to start. Either the invoked program is missing, or you may have insufficient permissions or resources to invoke the program.",
+        /*1*/ "The process crashed some time after starting successfully.",
+        /*2*/ "The last waitFor...() function timed out. The state of QProcess is unchanged, and you can try calling waitFor...() again.",
+        /*3*/ "An error occurred when attempting to read from the process. For example, the process may not be running.",
+        /*4*/ "An error occurred when attempting to write to the process. For example, the process may not be running, or it may have closed its input channel.",
+        /*5*/ "An unknown error occurred. This is the default return value of error()."
+    };
+    return (updaterPrz.error() < 6 ? errorDescriptions.at(error) : "Qt Internal Error!");
+}
+
+QString MUpdater::getExtraErrorInfo() const
+{
+    return extraErrorInfo;
 }
 

@@ -11,11 +11,13 @@ CONFIG += c++17
 
 SOURCES += \
     dialogueber.cpp \
-    mupdater.cpp
+    mupdater.cpp \
+    stylehandler.cpp
 
 HEADERS += \
     dialogueber.h \
-    mupdater.h
+    mupdater.h \
+    stylehandler.h
 
 # Default rules for deployment.
 unix {
