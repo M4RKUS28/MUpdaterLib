@@ -22,7 +22,7 @@ DialogUeber::DialogUeber(const QString &maintananceToolPath, const QString &orga
     if(parentCouldBeInvisSoDontExitIfUpdterNotifierIsClosed)
         qApp->setQuitOnLastWindowClosed(false); // Fix bug when shown updater window
 
-
+    ui->labelTitel->setText(application + " " + version);
 
 //    for(int i = 0; i < 5; i++) {
 //        ui->tabWidget->tabBar()->setTabTextColor(i, color);

@@ -183,7 +183,7 @@ background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0.523, stop:0
             <x>0</x>
             <y>0</y>
             <width>451</width>
-            <height>250</height>
+            <height>252</height>
            </rect>
           </property>
           <layout class="QGridLayout" name="gridLayout">
@@ -799,7 +799,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
       </spacer>
      </item>
      <item>
-      <widget class="QLabel" name="label">
+      <widget class="QLabel" name="labelTitel">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -813,7 +813,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
         </font>
        </property>
        <property name="text">
-        <string>SpotifyEnhancer 1.4.3</string>
+        <string>titel + version</string>
        </property>
       </widget>
      </item>
