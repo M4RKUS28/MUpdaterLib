@@ -1,7 +1,8 @@
 QT       += core gui widgets
 
 TEMPLATE = lib
-CONFIG += staticlib
+#CONFIG += staticlib
+CONFIG += shared_and_static build_all
 
 CONFIG += c++17
 

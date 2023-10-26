@@ -19,7 +19,6 @@ StyleHandler::~StyleHandler()
         combobox = nullptr;
     }
 }
-#include <QPalette>
 
 bool StyleHandler::setStyle(QString style)
 {
@@ -93,13 +92,19 @@ bool StyleHandler::setStyle(QString style)
     settingOwnColor.setValue(ENTRY_NAME, style );
     return true;
 }
-#include <QStringList>
+
+QStringList StyleHandler::getStyles()
+{
+    auto styles = QStyleFactory::keys();
+    styles.append("Fusion_OWN_dark_gray");
+    styles.append("Fusion_OWN_dark_blue");
+    styles.append("Fusion_OWN_dark_blue2");
+    return styles;
+}
+
 void StyleHandler::updateStyleList()
 {
-    QStringList keys = QStyleFactory::keys();
-    keys.append("Fusion_OWN_dark_gray");
-    keys.append("Fusion_OWN_dark_blue");
-    keys.append("Fusion_OWN_dark_blue2");
+    QStringList keys = getStyles();
 
     if(combobox) {
         if(combobox->count())
@@ -130,6 +135,11 @@ QComboBox *StyleHandler::getCombobox()
     return combobox;
 }
 
+QMap<QString, QString> &StyleHandler::getThemeMap()
+{
+    return themeMap;
+}
+
 void StyleHandler::indexChanged(int i)
 {
     if(combobox)
@@ -140,4 +150,24 @@ QString StyleHandler::getCurrentStyle()
 {
     QSettings settingOwnColor(organisation, application);
     return settingOwnColor.value(ENTRY_NAME, "Fusion"/*QApplication::style()->name()*/).toString();
+}
+
+QString StyleHandler::getVersion()
+{
+    return QString::number(majorVersion) + "." +QString::number(minorVersion) + "." + QString::number(minorMinorVersion);
+}
+
+int StyleHandler::getMajorVersion()
+{
+    return majorVersion;
+}
+
+int StyleHandler::getMinorVersion()
+{
+    return minorVersion;
+}
+
+int StyleHandler::getPatchVersion()
+{
+    return minorMinorVersion;
 }

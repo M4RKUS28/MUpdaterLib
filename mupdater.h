@@ -10,6 +10,9 @@
 #include <QObject>
 
 //#define Q_OS_WEB
+#define majorVersion 1
+#define minorVersion 0
+#define minorMinorVersion 0
 
 class MUpdater : public QObject
 {
@@ -31,34 +34,57 @@ public:
     MUpdater(QString maintananceToolPath, QString organisation, QString application, bool doAutoUpdateIfEnabled = true);
     ~MUpdater();
 
-    //Getter
+    ///Getter
     bool getAutoSearchForUpdateStatus();
-    bool updateExists();
+    /*return true, if MUpdater automatically searches for updates at start (after construction)
+     *return false, if option is diabled with setAutoSearchForUpdate(const bool & status)*/
+
     QString getNewVersion();
+    //return new version if version have been able to be extracted after checkForUpdates(), otherwhise return empty string
+
     QString getError() const;
+    //return Error Status
+
     UPDATE_STATUS getStatus() const;
+    /*return current status*/
+
     QString getStatusStr();
-
-    //Setter
-    void setAutoSearchForUpdate(const bool & status);
-
-    //
-    bool checkForUpdates(bool showMessageBox = false);
-    bool startUpdate();
-    bool resetAll();
-    bool showUpdateMessageBox();
+    /*return current status string for e.g message for user*/
 
     QString getExtraErrorInfo() const;
+    /*contains log of maintenance tool*/
 
-private:
+    QString getVersion();
+    //returns version as string
+
+    int getMajorVersion();
+    int getMinorVersion();
+    int getPatchVersion();
+    //returns version as int. Minor Versions are Backwards compatible, major ones not!
+
+    ///Setter
+    void setAutoSearchForUpdate(const bool & status);
+    //set auto check for updates after object construction to true/false
+
+    ///main Functions
+
+    //Check for update if either haven't already been checked, has failed or the program is up to date
+    bool checkForUpdates(bool showMessageBox = false);
+    /*Only shows Msg Box if Update is needed an there hasn't already one been shown*/
+    bool showUpdateMessageBox();
+    /*Start Maintanace Tool if status is 'update needed'*/
+    bool startUpdate();
+    /*stop running processes, reset error msg's and set status to not checked*/
+    bool resetAll();
+
 #ifndef Q_OS_WEB
+private:
     QProcess updaterPrz;
     QProcess maintaneceToolPrz;
 #endif
 
 signals:
-    emit void statusChanged();
-
+    void statusChanged();
 
 public slots:
     void updateDialogButtonClicked(QAbstractButton *button);
@@ -76,18 +102,15 @@ private:
     void do_showUpdateMessageBox();
     void do_startUpdate();
     void do_updaterFinished(const QString &value);
-
     QString getQProzessStartErrorStr(unsigned error);
 
 
 private:
     QMessageBox * updateMsgBox;
-
     QString newVersion;
     QString error, extraErrorInfo;
     QString organisation;
     QString application;
-
     QString maintananceToolPath;
     bool showMsgBox;
 };

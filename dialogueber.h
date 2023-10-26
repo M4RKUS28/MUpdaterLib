@@ -32,7 +32,6 @@ private slots:
     void updaterStatusChanged();
     void on_pushButtonUpdaterButton_clicked();
     void on_pushButtonClose_clicked();
-
     void on_radioButtonautosearchupdates_clicked(bool checked);
 
 private:
@@ -41,7 +40,7 @@ private:
     QString version;
     QColor color;
 
-    void delay(int sec = 1);
+//    void delay(int sec = 1);
     void setUpdateErrorLog(QString msg);
 };
 

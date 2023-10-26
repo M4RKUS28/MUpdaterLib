@@ -64,4 +64,10 @@ debug/
 release/
 release*/
 
+shared-debug/
+shared-release/
+
+static-debug/
+static-release/
+
 installer/*.exe

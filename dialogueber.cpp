@@ -215,12 +215,12 @@ void DialogUeber::updaterStatusChanged()
     }
 }
 
-void DialogUeber::delay(int sec)
-{
-    QTime dieTime= QTime::currentTime().addSecs(sec);
-    while (QTime::currentTime() < dieTime)
-        QApplication::processEvents(QEventLoop::AllEvents, 100);
-}
+//void DialogUeber::delay(int sec)
+//{
+//    QTime dieTime= QTime::currentTime().addSecs(sec);
+//    while (QTime::currentTime() < dieTime)
+//        QApplication::processEvents(QEventLoop::AllEvents, 100);
+//}
 
 void DialogUeber::setUpdateErrorLog(QString msg)
 {

@@ -360,3 +360,23 @@ QString MUpdater::getExtraErrorInfo() const
     return extraErrorInfo;
 }
 
+QString MUpdater::getVersion()
+{
+    return QString::number(majorVersion) + "." +QString::number(minorVersion) + "." + QString::number(minorMinorVersion);
+}
+
+int MUpdater::getMajorVersion()
+{
+    return majorVersion;
+}
+
+int MUpdater::getMinorVersion()
+{
+    return minorVersion;
+}
+
+int MUpdater::getPatchVersion()
+{
+    return minorMinorVersion;
+}
+
