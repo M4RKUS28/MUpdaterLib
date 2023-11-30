@@ -36,8 +36,8 @@ bool StyleHandler::setStyle(QString style)
         qApp->setStyle( QStyleFactory::create(style) );
 
     } else {
-        qApp->setStyle( QStyleFactory::create("Fusion") );
-        QApplication::processEvents();
+        //QApplication::setPalette(QPalette());
+        //QApplication::processEvents();
         QPalette palette;
          if(style == "Fusion_OWN_dark_gray") {
                 palette.setColor(QPalette::Window, QColor(53, 53, 53));
@@ -79,13 +79,10 @@ bool StyleHandler::setStyle(QString style)
 
         } else
             return false;
-        QApplication::setPalette(QPalette());
-        QApplication::processEvents();
         QApplication::setPalette(palette);
         QApplication::processEvents();
-        QApplication::setPalette(palette);
-        QApplication::processEvents();
-        QApplication::setPalette(palette);
+        qApp->setStyle( QStyleFactory::create("Fusion") );
+        //QApplication::processEvents();
     }
 
     QSettings settingOwnColor(organisation, application);

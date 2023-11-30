@@ -77,7 +77,11 @@ public:
     /*stop running processes, reset error msg's and set status to not checked*/
     bool resetAll();
 
+
+    QString getMaintananceToolPath() const;
+
 #ifndef Q_OS_WEB
+
 private:
     QProcess updaterPrz;
     QProcess maintaneceToolPrz;
@@ -103,6 +107,8 @@ private:
     void do_startUpdate();
     void do_updaterFinished(const QString &value);
     QString getQProzessStartErrorStr(unsigned error);
+
+    QString getUpdterPackageManagerCoreStatusByExitCode(int exitcode, bool isUpdateCheck = true);
 
 
 private:

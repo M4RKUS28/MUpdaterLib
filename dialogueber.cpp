@@ -12,11 +12,12 @@
 
 DialogUeber::DialogUeber(const QString &maintananceToolPath, const QString &organisation,
                          const QString &application, const QString &version, const QColor & color,
-                         QWidget *parent, const bool parentCouldBeInvisSoDontExitIfUpdterNotifierIsClosed) :
+                         QWidget *parent, const bool parentCouldBeInvisSoDontExitIfUpdterNotifierIsClosed, const bool autoHideUpdterPart) :
     QDialog(parent),
     ui(new Ui::DialogUeber),
     version(version),
-    color(color)
+    color(color),
+    autoHideUpdterPart(autoHideUpdterPart)
 {
     ui->setupUi(this);
     if(parentCouldBeInvisSoDontExitIfUpdterNotifierIsClosed)
@@ -35,42 +36,36 @@ DialogUeber::DialogUeber(const QString &maintananceToolPath, const QString &orga
     ui->tabWidget->setTabVisible(1, false);
     ui->tabWidget->setTabVisible(2, false);
     ui->tabWidget->setTabVisible(4, false);
-    ui->tabWidget->setCurrentIndex(0);
-
-    //set Style Sheet:
-    ui->tabWidget->setStyleSheet("QTabWidget::pane {"
-                                 "  border: 1px solid gray;"
-                                 "  background: rgba(220, 220, 220, 30);"
-                                 "}"
-                                 "QTabBar::tab {"
-                                 "  background: rgba(220, 220, 220, 30); "
-                                 "  border: 1px solid gray; "
-                                 "  padding: 6px;"
-                                 "  border-radius: 4px;"
-                                 "  margin-bottom: -3px;"
-                                 "} "
-                                 "QTabBar::tab:selected { "
-                                 "  border: 2px solid " + color.name() + ";"
-                                 "  border-top-width: 4px;"
-                                 "  margin-bottom: -3px;"
-                                 "  padding-top: 5px;"
-                                 "}");
+    ui->tabWidget->setCurrentIndex(3);
 
     QString frameColorStyleSheet = "{"
                                    "	border:  1px solid " + color.name() + " ;"
-                                   " 	border-radius: 10px;"
-                                   "	padding: 1px;"
-                                   "}";
+                                                    " 	border-radius: 10px;"
+                                                    "	padding: 1px;"
+                                                    "}";
 
-    ui->updaterFrame->setStyleSheet("QFrame#updaterFrame" + frameColorStyleSheet);
-    ui->frameueberborder->setStyleSheet("QFrame#frameueberborder" + frameColorStyleSheet);
+    //ui->frameueberborder1->setStyleSheet("QFrame#frameueberborder" + frameColorStyleSheet);
     ui->framedebrounder->setStyleSheet("QFrame#framedebrounder" + frameColorStyleSheet);
     ui->lineItemDebLine->setStyleSheet("border: 2px solid " + color.name() + ";");
 
 
     m_updater = new MUpdater(maintananceToolPath, organisation, application, true);
+    m_styleHandler = new StyleHandler(organisation, application);
+
     this->ui->labelUpdateStatus->setText(m_updater->getStatusStr());
-    ui->radioButtonautosearchupdates->setChecked(m_updater->getAutoSearchForUpdateStatus());
+    autoUpdaterMenue = new QMenu(this);
+
+    if(QFile(m_updater->getMaintananceToolPath()).exists()) {
+        action_start_maintanace_tool = new QAction("MaintanaceTool starten", autoUpdaterMenue);
+        connect(action_start_maintanace_tool, &QAction::triggered, this, &DialogUeber::onActionStartMaintanaceToolCliecked);
+        autoUpdaterMenue->addAction(action_start_maintanace_tool);
+    }
+
+    actionupdater = new QAction("Bei Programmstart auchtomatisch nach Updates suchen", autoUpdaterMenue);
+    actionupdater->setCheckable(true);
+    actionupdater->setChecked( m_updater->getAutoSearchForUpdateStatus() );
+    connect(actionupdater, &QAction::triggered, this, &DialogUeber::onActionAutoUSearchClicked);
+    autoUpdaterMenue->addAction(actionupdater);
 
     ui->label_version->setText("SpotifyEnhancer " + version);
     ui->label_qt_version->setText("Qt " + QString(QT_VERSION_STR));
@@ -166,10 +161,17 @@ void DialogUeber::setIssueWebsite(QString url)
 
 }
 
+void DialogUeber::setUpdaterFinishedMsgBoxFilePath(QString path)
+{
+    msgBoxFilePath = path;
+}
+
+
 DialogUeber::~DialogUeber()
 {
     delete ui;
     delete m_updater;
+    delete m_styleHandler;
 }
 
 MUpdater *DialogUeber::updater()
@@ -177,40 +179,72 @@ MUpdater *DialogUeber::updater()
     return m_updater;
 }
 
+StyleHandler *DialogUeber::styleHandler()
+{
+    return m_styleHandler;
+}
+
 void DialogUeber::updaterStatusChanged()
 {
     ui->pushButtonUpdaterButton->hide();
     ui->labelUpdateStatus->setText(updater()->getStatusStr());
     ui->plainTextEdit_updaer_error_log->appendPlainText("\n --> " + updater()->getStatusStr());
+    ui->labelIi->setText("");
+    ui->labelIi->setStyleSheet("");
+
 
     switch (updater()->getStatus()) {
     case MUpdater::NOT_CHECKED:
         ui->pushButtonUpdaterButton->show();
         this->ui->pushButtonUpdaterButton->setText("Nach Updates suchen");
+        ui->labelIi->setText("↓");
         break;
     case MUpdater::UPDTAE_NEEDED:
         ui->pushButtonUpdaterButton->show();
+        ui->labelIi->setText("!");
         this->ui->pushButtonUpdaterButton->setText("Aktualisieren");
         ui->tabWidget->setTabVisible(4, false);
         break;
     case MUpdater::UP_TO_DATE:
-        ui->labelUpdateStatus->setText("Sie verwenden die neuste Version!");
         this->ui->pushButtonUpdaterButton->setText("Erneut nach Updates suchen");
         ui->pushButtonUpdaterButton->show();
         ui->tabWidget->setTabVisible(4, false);
+        ui->labelIi->setText("✓");
+        ui->labelIi->setStyleSheet("color: green;");
         break;
     case MUpdater::UPDATING: {
-        ui->pushButtonUpdaterButton->show();
-        this->ui->pushButtonUpdaterButton->setText("Neustarten");
+        ui->tabWidget->setTabVisible(4, false);
         break;
     }
     case MUpdater::UPDATE_ERROR: {
         ui->pushButtonUpdaterButton->show();
         this->ui->pushButtonUpdaterButton->setText("Erneut nach Updates suchen");
         this->setUpdateErrorLog(m_updater->getExtraErrorInfo());
+        this->ui->labelIi->setText("⨯");
+        ui->labelIi->setStyleSheet("color: red;");
         break;
     }
-    default:
+    case MUpdater::NO_UPDATER: {
+        if(autoHideUpdterPart) {
+            ui->pushButtonMenueAutoUpdate->hide();
+            ui->pushButtonUpdaterButton->hide();
+        }
+        break;
+    }
+//    default:
+//        break;
+    case MUpdater::CHECKING:
+        ui->tabWidget->setTabVisible(4, false);
+        break;
+    case MUpdater::UPDATE_FINISHED:
+        ui->pushButtonUpdaterButton->show();
+        ui->labelIi->setText("⟳");
+        this->ui->pushButtonUpdaterButton->setText("Programm neustarten");
+
+        if(QFile(msgBoxFilePath).exists()) {
+            QMessageBox::information(this, "Update Info", QFile(msgBoxFilePath).readAll());
+        }
+
         break;
     }
 }
@@ -250,9 +284,19 @@ void DialogUeber::on_pushButtonClose_clicked()
 }
 
 
-void DialogUeber::on_radioButtonautosearchupdates_clicked(bool checked)
+void DialogUeber::on_pushButtonMenueAutoUpdate_clicked()
 {
-    m_updater->setAutoSearchForUpdate(checked);
-    ui->radioButtonautosearchupdates->setChecked(m_updater->getAutoSearchForUpdateStatus());
+    autoUpdaterMenue->exec(QCursor::pos());
+}
+
+void DialogUeber::onActionAutoUSearchClicked()
+{
+    m_updater->setAutoSearchForUpdate(actionupdater->isChecked());
+}
+
+void DialogUeber::onActionStartMaintanaceToolCliecked()
+{
+    if(QFile(m_updater->getMaintananceToolPath()).exists())
+        QProcess::startDetached(m_updater->getMaintananceToolPath());
 }
 

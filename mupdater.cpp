@@ -5,7 +5,8 @@
 #include <QFile>
 
 MUpdater::MUpdater(QString maintananceToolPath, QString organisation, QString application, bool doAutoUpdateIfEnabled)
-    : status(UPDATE_STATUS::NOT_CHECKED), updateMsgBox(nullptr), organisation(organisation), application(application), maintananceToolPath(maintananceToolPath), showMsgBox(true)
+    : status(UPDATE_STATUS::NOT_CHECKED), updateMsgBox(nullptr), organisation(organisation),
+    application(application), maintananceToolPath(maintananceToolPath), showMsgBox(true)
 {
     qDebug() << "Updater()";
 
@@ -37,8 +38,9 @@ MUpdater::~MUpdater()
     }
 #endif
 
-
 }
+
+
 
 void MUpdater::setAutoSearchForUpdate(const bool &status)
 {
@@ -49,7 +51,8 @@ void MUpdater::setAutoSearchForUpdate(const bool &status)
 bool MUpdater::getAutoSearchForUpdateStatus()
 {
     QSettings settingOwnColor(organisation, application);
-    return (settingOwnColor.contains("AUTO_SEARCH_FOR_UPDATE")) ? settingOwnColor.value("AUTO_SEARCH_FOR_UPDATE").toBool() : true;
+    return (settingOwnColor.contains("AUTO_SEARCH_FOR_UPDATE")) ?
+               settingOwnColor.value("AUTO_SEARCH_FOR_UPDATE").toBool() : true;
 }
 
 bool MUpdater::showUpdateMessageBox()
@@ -99,10 +102,10 @@ QString MUpdater::getStatusStr()
         return this->getNewVersion().isEmpty() ? "Es sind Updates verfügbar!" : "Es ist eine Neue Version verfügbar: " + this->getNewVersion();
     }
     case MUpdater::UPDATING: {
-        return "Updater ausgeführt!";
+        return "Updating...";
     }
     case MUpdater::UPDATE_ERROR: {
-        return "Während der Suche nach Updates ist ein Fehler aufgetreten: " + this->getError();
+        return "Es ist ein Fehler aufgetreten: " + this->getError();
     }
     case MUpdater::UPDATE_FINISHED: {
         return "Neustarten um Update abzuschließen:";
@@ -162,12 +165,12 @@ void MUpdater::updateDialogButtonClicked(QAbstractButton *button)
 
 void MUpdater::onUpdateCheckFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
-    zustandWechseln("onUpdateCheckFinished()", (exitStatus == QProcess::NormalExit && exitCode == 0) ? "QProcess::NormalExit;ExitValue==0" : "<Error>");
+    zustandWechseln("onUpdateCheckFinished()", (exitStatus == QProcess::NormalExit && exitCode == 0) ? "QProcess::NormalExit;ExitValue==0" : getUpdterPackageManagerCoreStatusByExitCode(exitCode));
 }
 
 void MUpdater::onUpdateMaintanenceTollFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
-    zustandWechseln("onUpdateMaintanenceTollFinished()", (exitStatus == QProcess::NormalExit && exitCode == 0) ? "QProcess::NormalExit;ExitValue==0" : "<Error>");
+    zustandWechseln("onUpdateMaintanenceTollFinished()", (exitStatus == QProcess::NormalExit && exitCode == 0) ? "QProcess::NormalExit;ExitValue==0" : getUpdterPackageManagerCoreStatusByExitCode(exitCode));
 }
 
 
@@ -225,7 +228,7 @@ bool MUpdater::zustandWechseln(const QString &action, const QString &value)
         break;
     }
     case UPDATING: {
-        if(action == "updaterFinished()") {
+        if(action == "onUpdateMaintanenceTollFinished()") {
             do_updaterFinished(value);
         } else {
             return false;
@@ -301,7 +304,7 @@ void MUpdater::do_UpdateCheckFinished(const QString & value)
         }
     } else {
         QString err =  updaterPrz.readAllStandardError();
-        setStatus(UPDATE_STATUS::UPDATE_ERROR, "Update fehlgeschlagen!", (err.isEmpty() ? output : err));
+        setStatus(UPDATE_STATUS::UPDATE_ERROR, value, (err.isEmpty() ? output : err));
     }
 }
 
@@ -321,7 +324,7 @@ void MUpdater::do_startUpdate()
         setStatus(UPDATE_STATUS::NO_UPDATER, "Not installed with updater!");
     } else {
         qDebug() << "Start MaintenanceTool...";
-        maintaneceToolPrz.start(maintananceToolPath);
+        maintaneceToolPrz.start(maintananceToolPath, {"--start-updater"});
         if(maintaneceToolPrz.state() == QProcess::NotRunning || maintaneceToolPrz.exitCode() != 0) {
             setStatus(UPDATE_STATUS::UPDATE_ERROR, "Start MaintenanceTool failed", this->getQProzessStartErrorStr(maintaneceToolPrz.error()));
         } else {
@@ -335,10 +338,12 @@ void MUpdater::do_updaterFinished(const QString &value)
 {
     if(value == "QProcess::NormalExit;ExitValue==0") {
         setStatus(UPDATE_STATUS::UPDATE_FINISHED, "Update Erfogreich ausgeführt!");
+
+
     } else {
         QString err =  updaterPrz.readAllStandardError();
         QString output = (err.isEmpty() ? updaterPrz.readAllStandardOutput() : err);
-        setStatus(UPDATE_STATUS::UPDATE_ERROR, "Konnte Maintanace Programm nicht starten!", output);
+        setStatus(UPDATE_STATUS::UPDATE_ERROR, value, output);
     }
 }
 
@@ -353,6 +358,34 @@ QString MUpdater::getQProzessStartErrorStr(unsigned int error)
         /*5*/ "An unknown error occurred. This is the default return value of error()."
     };
     return (updaterPrz.error() < 6 ? errorDescriptions.at(error) : "Qt Internal Error!");
+}
+
+QString MUpdater::getUpdterPackageManagerCoreStatusByExitCode(int exitcode, bool isUpdateCheck)
+{
+    QString praefix = isUpdateCheck ? "Update checking" : "Installation";
+    switch (exitcode) {
+    case 0:
+        return praefix + " was successful.";
+    case 1:
+        return praefix + " failed.";
+    case 2:
+        return praefix + " is in progress.";
+    case 3:
+        return praefix + " was canceled.";
+    case 4:
+        return praefix + " was not completed.";
+    case 5:
+        return "Installation has to be updated.";
+    case 6:
+        return "Installation essential components were updated.";
+    default:
+        return "Unknown Error";
+    }
+}
+
+QString MUpdater::getMaintananceToolPath() const
+{
+    return maintananceToolPath;
 }
 
 QString MUpdater::getExtraErrorInfo() const
