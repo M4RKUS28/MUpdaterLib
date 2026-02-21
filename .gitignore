@@ -71,3 +71,4 @@ static-debug/
 static-release/
 
 installer/*.exe
+build/
