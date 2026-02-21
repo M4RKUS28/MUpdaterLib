@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/auto_icon.png</file>
+        <file>icons/mond_icon.png</file>
+        <file>icons/sun_icon.png</file>
+        <file>icons/sun_icon_white.png</file>
+        <file>icons/mond_icon_white.png</file>
+        <file>icons/auto_icon_white.png</file>
+        <file>icons/Windows-11-Win-X-Menu-icon.png</file>
+    </qresource>
+</RCC>

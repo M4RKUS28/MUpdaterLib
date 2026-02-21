@@ -1,4 +1,4 @@
-QT       += core gui widgets
+QT       += core gui widgets network
 
 TEMPLATE = lib
 CONFIG += staticlib
@@ -11,14 +11,21 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    dialogueber.cpp \
-    mupdater.cpp \
-    stylehandler.cpp
+    src/dialogueber.cpp \
+    src/flowlayout.cpp \
+    src/mupdater.cpp \
+    src/stylehandler.cpp \
+    src/switch.cpp \
+    src/wakeuplistener.cpp
 
 HEADERS += \
-    dialogueber.h \
-    mupdater.h \
-    stylehandler.h
+    src/dialogueber.h \
+    src/flowlayout.h \
+    src/mupdater.h \
+    src/style.h \
+    src/stylehandler.h \
+    src/switch.h \
+    src/wakeuplistener.h
 
 # Default rules for deployment.
 unix {
@@ -27,6 +34,12 @@ unix {
 !isEmpty(target.path): INSTALLS += target
 
 FORMS += \
-    dialogueber.ui
+    src/dialogueber.ui
 
-RESOURCES +=
+RESOURCES += \
+    src/res/darkstyleicons.qrc \
+    src/res/themes_icon.qrc \
+    src/res/ressources.qrc
+
+# Application Icon
+win32:RC_ICONS += icons/appicon.ico
