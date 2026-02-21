@@ -113,7 +113,8 @@ DialogUeber::DialogUeber(const QString &maintananceToolPath, const QString &orga
     ui->label_5issuetext->hide();
     ui->label_4issue2->hide();
 
-    ui->pushButtonUpdaterButton->setStyleSheet("border: none;"
+    ui->pushButtonUpdaterButton->setStyleSheet("QPushButton {"
+                              "border: none;"
                               "background: none;"
                               "color: lightblue;"
                               "text-decoration: underline;"
