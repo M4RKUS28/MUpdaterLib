@@ -6,23 +6,37 @@
 #include <QTimer>
 
 
-MUpdater::MUpdater(QString maintananceToolPath, QString organisation, QString application, bool doAutoUpdateIfEnabled)
-    : status(UPDATE_STATUS::NOT_CHECKED), updateMsgBox(nullptr), organisation(organisation),
-    application(application), maintananceToolPath(maintananceToolPath), showMsgBox(true)
+MUpdater::MUpdater(const QString &maintananceToolPath,
+                   const QString &organisation,
+                   const QString &application,
+                   bool doAutoUpdateIfEnabled)
+    : status(UPDATE_STATUS::NOT_CHECKED),
+      updateMsgBox(nullptr),
+      updateInfoMsgBox(nullptr),
+      organisation(organisation),
+      application(application),
+      maintananceToolPath(maintananceToolPath),
+      showMsgBox(true),
+      onlyIfUpdateAvaible(true),
+      timerCounter(0),
+      timerId(0)
 {
-    qDebug() << "       MUpdater()";
+    qDebug() << "MUpdater::MUpdater()";
+
+    // Info-Box für Suchfortschritt vorbereiten (wird bei Bedarf gefüllt und angezeigt)
     updateInfoMsgBox = new QMessageBox(QMessageBox::NoIcon, application + " Updates", "");
+    updateInfoMsgBox->setAttribute(Qt::WA_DeleteOnClose); // kein Memory Leak bei close()
 
     if(doAutoUpdateIfEnabled && getAutoSearchForUpdateStatus()) {
-        //STart timer for update checking
-        QTimer::singleShot(1, this, SLOT(startSearchForUpdatesAtStartTimer()));
+        // Kurze Verzögerung damit die Anwendung vollständig hochgefahren ist
+        QTimer::singleShot(1, this, &MUpdater::startSearchForUpdatesAtStartTimer);
     }
 
 #ifndef Q_OS_WEB
-    //connect to slot
-    connect(&updaterPrz, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onUpdateCheckFinished(int,QProcess::ExitStatus)));
-    connect(&maintaneceToolPrz, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onUpdateMaintanenceTollFinished(int,QProcess::ExitStatus)));
+    connect(&updaterPrz,      &QProcess::finished, this, &MUpdater::onUpdateCheckFinished);
+    connect(&maintaneceToolPrz, &QProcess::finished, this, &MUpdater::onUpdateMaintanenceTollFinished);
 #else
+    // Auf Web-Plattformen ist kein lokaler Updater-Prozess möglich
     status = UPDATE_STATUS::NO_UPDATER;
 #endif
 }
@@ -30,31 +44,50 @@ MUpdater::MUpdater(QString maintananceToolPath, QString organisation, QString ap
 MUpdater::~MUpdater()
 {
 #ifndef Q_OS_WEB
+    // Laufenden Check-Prozess sauber beenden
     if(updaterPrz.state() == QProcess::Running) {
-        qDebug() << "Kill updater";
         updaterPrz.kill();
-        if(!updaterPrz.waitForFinished()) {
+        if(!updaterPrz.waitForFinished(2000)) {
             updaterPrz.terminate();
-            qDebug() << "terminate updater";
+            qWarning() << "MUpdater: updaterPrz konnte nicht beendet werden";
         }
     }
 #endif
-    qDebug() << "       ~MUpdater()";
+    // Auto-Update-Timer stoppen
+    if(timerId != 0)
+        killTimer(timerId);
+
+    // Info-Box schließen (WA_DeleteOnClose übernimmt die Freigabe)
+    if(updateInfoMsgBox) {
+        updateInfoMsgBox->close();
+        updateInfoMsgBox = nullptr;
+    }
+    // Update-Auswahl-Box abmelden und freigeben
+    if(updateMsgBox) {
+        disconnect(updateMsgBox, &QMessageBox::buttonClicked,
+                   this, &MUpdater::updateDialogButtonClicked);
+        updateMsgBox->deleteLater();
+        updateMsgBox = nullptr;
+    }
+    qDebug() << "MUpdater::~MUpdater()";
 }
 
 void MUpdater::startSearchForUpdatesAtStartTimer()
 {
+    // Sofortiger erster Versuch, dann alle 15 Sekunden wiederholen (max. 4x)
     timerCounter = 0;
     timerEvent(nullptr);
-    this->startTimer(15000);
+    timerId = startTimer(15000);
 }
 
-//Check for updates at start!
+// Wiederholt den Update-Check beim Start — wird max. 4x versucht
 void MUpdater::timerEvent(QTimerEvent *event)
 {
     if(timerCounter >= 4) {
-        if(event)
+        if(event) {
             this->killTimer(event->timerId());
+            timerId = 0;
+        }
         if(this->getStatus() == UPDATE_STATUS::UPDATE_ERROR || this->getStatus() == UPDATE_STATUS::NOT_CHECKED)
             qDebug() << ">>>>>>> timerEv: START UPDATE CHECKING FAILED!! 4 / 4 -> stop timer";
         return;
@@ -69,25 +102,27 @@ void MUpdater::timerEvent(QTimerEvent *event)
         break;
     case UPDATE_STATUS::UP_TO_DATE:
         qDebug() << ">>>>>>> timerEv: UP_TO_DATE... stopping timer";
-        if(event)
+        if(event) {
             this->killTimer(event->timerId());
+            timerId = 0;
+        }
         break;
     default:
         break;
     }
 }
 
-void MUpdater::setAutoSearchForUpdate(const bool &status)
+void MUpdater::setAutoSearchForUpdate(const bool &enabled)
 {
-    QSettings settingOwnColor(organisation, application);
-    settingOwnColor.setValue("AUTO_SEARCH_FOR_UPDATE", status );
+    QSettings settings(organisation, application);
+    settings.setValue("AUTO_SEARCH_FOR_UPDATE", enabled);
 }
 
 bool MUpdater::getAutoSearchForUpdateStatus()
 {
-    QSettings settingOwnColor(organisation, application);
-    return (settingOwnColor.contains("AUTO_SEARCH_FOR_UPDATE")) ?
-               settingOwnColor.value("AUTO_SEARCH_FOR_UPDATE").toBool() : true;
+    QSettings settings(organisation, application);
+    // Standard: aktiviert (true) falls kein Wert gespeichert
+    return settings.value("AUTO_SEARCH_FOR_UPDATE", true).toBool();
 }
 
 bool MUpdater::showUpdateMessageBox()
@@ -151,10 +186,10 @@ QString MUpdater::getStatusStr()
     return "";
 }
 
-bool MUpdater::checkForUpdates(bool showMessageBox, bool onlyIfUpdateAvaible)
+bool MUpdater::checkForUpdates(bool showMessageBox, bool onlyIfUpdateAvailable)
 {
-    this->showMsgBox = showMessageBox;
-    this->onlyIfUpdateAvaible = onlyIfUpdateAvaible;
+    this->showMsgBox         = showMessageBox;
+    this->onlyIfUpdateAvaible = onlyIfUpdateAvailable;
     return zustandWechseln("checkForUpdates()");
 }
 
@@ -168,7 +203,7 @@ bool MUpdater::resetAll()
     newVersion = "";
 
     if(this->updateMsgBox != nullptr) {
-        disconnect(updateMsgBox, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(updateDialogButtonClicked(QAbstractButton*)));
+        disconnect(updateMsgBox, &QMessageBox::buttonClicked, this, &MUpdater::updateDialogButtonClicked);
         updateMsgBox->deleteLater();
         updateMsgBox = nullptr;
     }
@@ -195,7 +230,7 @@ bool MUpdater::resetAll()
 void MUpdater::updateDialogButtonClicked(QAbstractButton *button)
 {
     QMessageBox::ButtonRole role = updateMsgBox->buttonRole(button);
-    disconnect(updateMsgBox, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(updateDialogButtonClicked(QAbstractButton*)));
+    disconnect(updateMsgBox, &QMessageBox::buttonClicked, this, &MUpdater::updateDialogButtonClicked);
     updateMsgBox->deleteLater();
     updateMsgBox = nullptr;
     zustandWechseln("updateDialogButtonClicked()", (role == QMessageBox::AcceptRole) ? "AcceptRole" : "<Declined>");
@@ -378,23 +413,20 @@ void MUpdater::do_showUpdateMessageBox()
     updateMsgBox->addButton("Jetzt aktualisieren", QMessageBox::AcceptRole);
     updateMsgBox->addButton("Später aktualisieren", QMessageBox::RejectRole);
     updateMsgBox->show();
-    connect(updateMsgBox, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(updateDialogButtonClicked(QAbstractButton*)));
+    connect(updateMsgBox, &QMessageBox::buttonClicked, this, &MUpdater::updateDialogButtonClicked);
 }
 
 
 bool MUpdater::do_showRestartMsgBox()
 {
-    QMessageBox *msgBox = new QMessageBox(QMessageBox::Information, "App Neustart benötigt!",   "Bitte starten sie "
-                          +  application + " neu, um die Aktualisierung abzuschließen.");
-    auto restartButton = msgBox->addButton("Jetzt neustarten", QMessageBox::AcceptRole);
-    msgBox->addButton("Später neustarten", QMessageBox::RejectRole);
+    QMessageBox msgBox(QMessageBox::Information, "App Neustart benötigt!",
+                       "Bitte starten Sie " + application + " neu, um die Aktualisierung abzuschließen.");
+    auto restartButton = msgBox.addButton("Jetzt neustarten", QMessageBox::AcceptRole);
+    msgBox.addButton("Später neustarten", QMessageBox::RejectRole);
 
+    msgBox.exec();
 
-    msgBox->exec();
-
-
-    if (reinterpret_cast<QPushButton*>(msgBox->clickedButton()) == restartButton) {
-        // Der "Jetzt neustarten"-Button wurde geklickt
+    if (msgBox.clickedButton() == restartButton) {
         this->restartApp();
     }
 
@@ -421,21 +453,21 @@ void MUpdater::do_startUpdate()
 void MUpdater::do_updaterFinished(const QString &value)
 {
     if(value == "QProcess::NormalExit;ExitValue==0") {
-        setStatus(UPDATE_STATUS::UPDATE_FINISHED, "Update Erfogreich ausgeführt!");
+        setStatus(UPDATE_STATUS::UPDATE_FINISHED, "Update erfolgreich ausgeführt!");
 
         if(showMsgBox)
             zustandWechseln("showUpdateMessageBoxForRestart()");
 
     } else {
-        QString err =  updaterPrz.readAllStandardError();
-        QString output = (err.isEmpty() ? updaterPrz.readAllStandardOutput() : err);
+        QString err = maintaneceToolPrz.readAllStandardError();
+        QString output = (err.isEmpty() ? maintaneceToolPrz.readAllStandardOutput() : err);
         setStatus(UPDATE_STATUS::UPDATE_ERROR, value, output);
     }
 }
 
 QString MUpdater::getQProzessStartErrorStr(unsigned int error)
 {
-    QVector<QString> errorDescriptions = {
+    static const QVector<QString> errorDescriptions = {
         /*0*/ "The process failed to start. Either the invoked program is missing, or you may have insufficient permissions or resources to invoke the program.",
         /*1*/ "The process crashed some time after starting successfully.",
         /*2*/ "The last waitFor...() function timed out. The state of QProcess is unchanged, and you can try calling waitFor...() again.",
@@ -443,7 +475,7 @@ QString MUpdater::getQProzessStartErrorStr(unsigned int error)
         /*4*/ "An error occurred when attempting to write to the process. For example, the process may not be running, or it may have closed its input channel.",
         /*5*/ "An unknown error occurred. This is the default return value of error()."
     };
-    return (updaterPrz.error() < 6 ? errorDescriptions.at(error) : "Qt Internal Error!");
+    return (error < static_cast<unsigned>(errorDescriptions.size()) ? errorDescriptions.at(error) : "Qt Internal Error!");
 }
 
 QString MUpdater::getUpdterPackageManagerCoreStatusByExitCode(int exitcode, bool isUpdateCheck)

@@ -86,7 +86,7 @@ Die visuelle Konfiguration erfolgt über die Struct `Style::Switch` in [style.h]
 | `thumbDisabled` | `gray400` | Farbe (gesperrt) |
 | `thumbBrushAnimation` | Linear, 150 ms | Animation Thumb-Farbe |
 | `trackBrushAnimation` | Linear, 150 ms | Animation Track-Farbe |
-| `thumbPosAniamtion` | InOutQuad, 150 ms | Animation Thumb-Position |
+| `thumbPosAnimation` | InOutQuad, 150 ms | Animation Thumb-Position |
 
 ---
 

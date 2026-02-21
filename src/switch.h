@@ -17,9 +17,21 @@
 #ifndef SWITCH_H
 #define SWITCH_H
 
+/**
+ * @file switch.h
+ * @brief Material-Design Toggle-Switch-Widget für Qt Widgets.
+ */
+
 #include <QtWidgets>
 #include "style.h"
 
+/**
+ * @brief Hilfsobjekt für QProperty-basierte Animationen.
+ *
+ * Kapselt QVariantAnimation und sendet bei jeder Wertänderung einen
+ * StyleAnimationUpdate-Event an das Zielobjekt, das daraufhin sich neu zeichnet.
+ * Läuft nicht mehr als nötig: stoppt automatisch wenn das Widget das Event ablehnt.
+ */
 class Animator final : public QVariantAnimation {
     Q_OBJECT
     Q_PROPERTY(QObject* targetObject READ targetObject WRITE setTargetObject)
@@ -38,16 +50,25 @@ public:
 public slots:
     void setup(int duration, QEasingCurve easing = QEasingCurve::Linear);
     void interpolate(const QVariant& start, const QVariant& end);
+    /** @brief Laufende Animation sofort auf einen festen Wert setzen (kein Tween). */
     void setCurrentValue(const QVariant&);
 
 protected:
+    /** @brief Sendet StyleAnimationUpdate an target; stoppt wenn abgelehnt. */
     void updateCurrentValue(const QVariant& value) override final;
-    void updateState(QAbstractAnimation::State newState, QAbstractAnimation::State oldState) override final;
+    void updateState(QAbstractAnimation::State newState,
+                     QAbstractAnimation::State oldState) override final;
 
 private:
-    QPointer<QObject> target;
+    QPointer<QObject> target; ///< Schwacher Zeiger auf das animierte Objekt
 };
 
+/**
+ * @brief Abstrakte Basisklasse für auswählbare Steuerelemente (Toggle-Stil).
+ *
+ * Erweitert QAbstractButton um ein `checkState()`-Interface und ein
+ * `stateChanged(int)`-Signal, das nach jedem Zustandswechsel emittiert wird.
+ */
 class SelectionControl : public QAbstractButton {
     Q_OBJECT
 
@@ -67,6 +88,20 @@ protected:
     virtual void toggle(Qt::CheckState state) = 0;
 };
 
+/**
+ * @brief Material-Design Toggle-Switch.
+ *
+ * Zeigt einen animierten Schieberegler an. Unterstützt:
+ * - Optionalen Label-Text (rechts vom Schalter)
+ * - Optionalen Prefix-QLabel (zeigt "Ein"/"Aus" und aktualisiert sich automatisch)
+ * - Individuelle Farbe über QBrush-Konstruktor
+ *
+ * @par Verwendung:
+ * @code
+ * Switch *sw = new Switch("Benachrichtigungen", this);
+ * connect(sw, &QAbstractButton::toggled, this, [](bool on) { ... });
+ * @endcode
+ */
 class Switch final : public SelectionControl {
     Q_OBJECT
 
@@ -87,10 +122,12 @@ protected:
     void resizeEvent(QResizeEvent*) override final;
     void toggle(Qt::CheckState) override final;
 
-    void init();
+    /** @brief Berechnet den Anzeigebereich des Schiebereglers. */
     QRect indicatorRect();
+    /** @brief Berechnet den Anzeigebereich des Label-Texts. */
     QRect textRect();
 
+    /** @brief Erstellt eine halbtransparente Farbe mit gegebener Opazität (0.0–1.0). */
     static inline QColor colorFromOpacity(const QColor& c, qreal opacity) {
         return QColor(c.red(), c.green(), c.blue(), qRound(opacity * 255.0));
     }
@@ -102,15 +139,16 @@ protected:
     }
 
 private slots:
+    /** @brief Aktualisiert den Prefix-Label wenn sich der Schaltzustand ändert. */
     void toggledBtn(bool checked);
 
 private:
-    Style::Switch style;
-    QPixmap shadowPixmap;
-    QPointer<Animator> thumbBrushAnimation;
-    QPointer<Animator> trackBrushAnimation;
-    QPointer<Animator> thumbPosAniamtion;
-    QLabel * praefix;
+    Style::Switch style;                  ///< Visuelle Parameter (Farben, Animationsdauern)
+    QPixmap       shadowPixmap;           ///< Vorgerenderte Schatten-Ellipse
+    QPointer<Animator> thumbBrushAnimation; ///< Farbanimation des Thumbs
+    QPointer<Animator> trackBrushAnimation; ///< Farbanimation des Tracks
+    QPointer<Animator> thumbPosAnimation;   ///< Positionsanimation des Thumbs
+    QLabel *praefix;                      ///< Optionaler "Ein/Aus"-Prefix-Label (kann nullptr sein)
 };
 
 #endif // SWITCH_H

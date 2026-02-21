@@ -1,7 +1,9 @@
 #include "flowlayout.h"
 
-
-
+/**
+ * @file flowlayout.cpp
+ * @brief Implementierung von FlowLayout.
+ */
 
 FlowLayout::FlowLayout(QWidget *parent, int margin, int hSpacing, int vSpacing)
     : QLayout(parent), m_hSpace(hSpacing), m_vSpace(vSpacing)
@@ -105,15 +107,18 @@ QSize FlowLayout::minimumSize() const
 
 int FlowLayout::doLayout(const QRect &rect, bool testOnly) const
 {
+    // Innenbereich unter Berücksichtigung der Rand-Margins berechnen
     int left, top, right, bottom;
     getContentsMargins(&left, &top, &right, &bottom);
     QRect effectiveRect = rect.adjusted(+left, +top, -right, -bottom);
     int x = effectiveRect.x();
     int y = effectiveRect.y();
-    int lineHeight = 0;
+    int lineHeight = 0; // Höhe der aktuellen Zeile
 
     for (QLayoutItem *item : std::as_const(itemList)) {
         const QWidget *wid = item->widget();
+
+        // Abstände: explizit oder vom Widget-Style ermitteln
         int spaceX = horizontalSpacing();
         if (spaceX == -1)
             spaceX = wid->style()->layoutSpacing(
@@ -125,6 +130,7 @@ int FlowLayout::doLayout(const QRect &rect, bool testOnly) const
 
         int nextX = x + item->sizeHint().width() + spaceX;
         if (nextX - spaceX > effectiveRect.right() && lineHeight > 0) {
+            // Kein Platz mehr in dieser Zeile → neue Zeile beginnen
             x = effectiveRect.x();
             y = y + lineHeight + spaceY;
             nextX = x + item->sizeHint().width() + spaceX;

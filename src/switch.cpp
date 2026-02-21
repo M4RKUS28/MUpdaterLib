@@ -15,6 +15,11 @@
 */
 
 #include "switch.h"
+#include <QFontMetrics>
+
+// ============================================================
+// Animator
+// ============================================================
 
 Animator::Animator(QObject* target, QObject* parent) : QVariantAnimation(parent) {
     setTargetObject(target);
@@ -73,18 +78,20 @@ void Animator::setup(int duration, QEasingCurve easing) {
 void Animator::interpolate(const QVariant& _start, const QVariant& end) {
     setStartValue(_start);
     setEndValue(end);
-    start();
+    start(); // Animation starten — wird durch updateCurrentValue fortlaufend aufgerufen
 }
 
 void Animator::setCurrentValue(const QVariant& value) {
+    // Start == End: kein Tween, nur aktuellen Wert sofort setzen
     setStartValue(value);
     setEndValue(value);
     updateCurrentValue(currentValue());
 }
 
 
-
-SelectionControl::SelectionControl(QWidget* parent) : QAbstractButton(parent) {
+// ============================================================
+// SelectionControl
+// ============================================================(QWidget* parent) : QAbstractButton(parent) {
     setObjectName("SelectionControl");
     setCheckable(true);
 }
@@ -113,7 +120,9 @@ void SelectionControl::nextCheckState() {
     SelectionControl::checkStateSet();
 }
 
-
+// ============================================================
+// Switch
+// ============================================================
 
 void Switch::init() {
     this->praefix = nullptr;
@@ -122,8 +131,8 @@ void Switch::init() {
     /* setup animations */
     thumbBrushAnimation = new Animator{ this, this };
     trackBrushAnimation = new Animator{ this, this };
-    thumbPosAniamtion = new Animator{ this, this };
-    thumbPosAniamtion->setup(style.thumbPosAniamtion.duration, style.thumbPosAniamtion.easing);
+    thumbPosAnimation = new Animator{ this, this };
+    thumbPosAnimation->setup(style.thumbPosAnimation.duration, style.thumbPosAnimation.easing);
     trackBrushAnimation->setup(style.trackBrushAnimation.duration, style.trackBrushAnimation.easing);
     thumbBrushAnimation->setup(style.thumbBrushAnimation.duration, style.thumbBrushAnimation.easing);
     /* set init values */
@@ -160,7 +169,7 @@ Switch::Switch(QWidget* parent, QLabel *praefix) : SelectionControl(parent) {
     if(praefix) {
         this->praefix = praefix;
         toggledBtn(false);
-        connect(this, SIGNAL(toggled(bool)), this, SLOT(toggledBtn(bool)));
+        connect(this, &Switch::toggled, this, &Switch::toggledBtn);
     }
 }
 
@@ -169,14 +178,14 @@ Switch::Switch(const QString& text, QWidget* parent) : Switch(parent) {
 }
 
 Switch::Switch(const QString& text, const QBrush& brush, QWidget* parent) : Switch(text, parent) {
+    // Akzentfarbe anpassen: Thumb und Track im eingeschalteten Zustand einfärben
     style.thumbOnBrush = brush.color();
     style.trackOnBrush = brush.color();
 }
 
 Switch::~Switch() {
-
+    // Animationen werden automatisch durch QObject-Parent-Kind-Mechanismus gelöscht
 }
-#include <QFontMetrics>
 
 // QSize Switch::sizeHint() const {
 //     auto h = style.height;
@@ -191,12 +200,12 @@ QSize Switch::sizeHint() const {
 }
 
 void Switch::paintEvent(QPaintEvent*) {
-    /* for desktop usage we do not need Radial reaction */
-
+    /* Radial-Reaktion (Ripple-Effekt) wird für Desktop-Nutzung nicht benötigt */
     QPainter p(this);
 
     const auto _indicatorRect = indicatorRect();
     const auto _textRect = textRect();
+    // Track ist etwas schmaler als der Indikator-Bereich
     auto trackMargin = style.indicatorMargin;
     trackMargin.setTop(trackMargin.top() + 2);
     trackMargin.setBottom(trackMargin.bottom() + 2);
@@ -211,7 +220,7 @@ void Switch::paintEvent(QPaintEvent*) {
         p.drawRoundedRect(trackRect, CORNER_RADIUS, CORNER_RADIUS);
         p.setRenderHint(QPainter::Antialiasing, false);
         /* draw thumb */
-        trackRect.setX(trackRect.x() - trackMargin.left() - trackMargin.right() - 2 + thumbPosAniamtion->currentValue().toInt());
+        trackRect.setX(trackRect.x() - trackMargin.left() - trackMargin.right() - 2 + thumbPosAnimation->currentValue().toInt());
         auto thumbRect = trackRect;
 
         if (!shadowPixmap.isNull())
@@ -219,7 +228,7 @@ void Switch::paintEvent(QPaintEvent*) {
 
         p.setBrush(thumbBrushAnimation->currentValue().value<QColor>());
         p.setRenderHint(QPainter::Antialiasing, true);
-        //        qDebug() << thumbRect << thumbPosAniamtion->currentValue();
+        //        qDebug() << thumbRect << thumbPosAnimation->currentValue();
         p.drawEllipse(thumbRect.center(), THUMB_RADIUS - SHADOW_ELEVATION - 1.0, THUMB_RADIUS - SHADOW_ELEVATION - 1.0);
         p.setRenderHint(QPainter::Antialiasing, false);
 
@@ -272,17 +281,19 @@ void Switch::resizeEvent(QResizeEvent* e) {
 }
 
 void Switch::toggle(Qt::CheckState state) {
+    // Animationszielwerte je nach Zustand (Checked/Unchecked) setzen
+    // Falls Widget nicht sichtbar ist: direkt auf Endwert springen (kein Tween)
     if (state == Qt::Checked) {
         const QVariant posEnd = (style.indicatorMargin.left() + style.indicatorMargin.right() + 2) * 2;
         const QVariant thumbEnd = colorFromOpacity(style.thumbOnBrush, style.thumbOnOpacity);
         const QVariant trackEnd = colorFromOpacity(style.trackOnBrush, style.trackOnOpacity);
 
         if (!isVisible()) {
-            thumbPosAniamtion->setCurrentValue(posEnd);
+            thumbPosAnimation->setCurrentValue(posEnd);
             thumbBrushAnimation->setCurrentValue(thumbEnd);
             trackBrushAnimation->setCurrentValue(trackEnd);
         } else {
-            thumbPosAniamtion->interpolate(0, posEnd);
+            thumbPosAnimation->interpolate(0, posEnd);
             thumbBrushAnimation->interpolate(colorFromOpacity(style.thumbOffBrush, style.thumbOffOpacity), thumbEnd);
             trackBrushAnimation->interpolate(colorFromOpacity(style.trackOffBrush, style.trackOffOpacity), trackEnd);
         }
@@ -292,11 +303,11 @@ void Switch::toggle(Qt::CheckState state) {
         const QVariant trackEnd = colorFromOpacity(style.trackOffBrush, style.trackOffOpacity);
 
         if (!isVisible()) {
-            thumbPosAniamtion->setCurrentValue(posEnd);
+            thumbPosAnimation->setCurrentValue(posEnd);
             thumbBrushAnimation->setCurrentValue(thumbEnd);
             trackBrushAnimation->setCurrentValue(trackEnd);
         } else {
-            thumbPosAniamtion->interpolate(thumbPosAniamtion->currentValue().toInt(), posEnd);
+            thumbPosAnimation->interpolate(thumbPosAnimation->currentValue().toInt(), posEnd);
             thumbBrushAnimation->interpolate(colorFromOpacity(style.thumbOnBrush, style.thumbOnOpacity), thumbEnd);
             trackBrushAnimation->interpolate(colorFromOpacity(style.trackOnBrush, style.trackOnOpacity), trackEnd);
         }
