@@ -37,9 +37,8 @@ FORMS += \
     src/dialogueber.ui
 
 RESOURCES += \
-    src/res/darkstyleicons.qrc \
-    src/res/themes_icon.qrc \
-    src/res/ressources.qrc
+    darkstyleicons.qrc \
+    themes_icon.qrc
 
 # Application Icon
 win32:RC_ICONS += icons/appicon.ico
