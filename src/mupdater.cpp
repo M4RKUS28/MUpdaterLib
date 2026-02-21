@@ -2,6 +2,7 @@
 
 #include <QAbstractButton>
 #include <QApplication>
+#include <QPushButton>
 #include <QFile>
 #include <QTimer>
 
@@ -426,7 +427,7 @@ bool MUpdater::do_showRestartMsgBox()
 
     msgBox.exec();
 
-    if (msgBox.clickedButton() == static_cast<QAbstractButton*>(restartButton)) {
+    if (msgBox.clickedButton() == restartButton) {
         this->restartApp();
     }
 
