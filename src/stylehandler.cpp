@@ -6,8 +6,8 @@
 
 StyleHandler::StyleHandler(const QString &organisation, const QString &application,
                            const bool enableStyleSheetThemes, QStringList filteredStyles)
-    : organisation(organisation),
-      application(application),
+    : m_organisation(organisation),
+      m_application(application),
       combobox(nullptr),
       m_enableStyleSheetThemes(enableStyleSheetThemes),
       filteredStyles(filteredStyles)
@@ -148,7 +148,7 @@ bool StyleHandler::setStyle(const QString &style)
 
     // Gewählten Style persistieren (muss VOR updateComboBoxIconColor() stehen,
     // da getCurrentStyle() diesen Wert liest)
-    QSettings settingOwnColor(organisation, application);
+    QSettings settingOwnColor(m_organisation, m_application);
     settingOwnColor.setValue(ENTRY_NAME, style);
 
     // Icons in der ComboBox aktualisieren (hell/dunkel je nach aktuellem Farbschema)
@@ -251,8 +251,8 @@ bool StyleHandler::setAutoStart(bool enabled)
             qWarning() << "setAutoStart: Registry-Schlüssel nicht beschreibbar";
             return false;
         }
-        settings.setValue(application, programPath + " /minimized");
-        if (!settings.contains(application)) {
+        settings.setValue(m_application, programPath + " /minimized");
+        if (!settings.contains(m_application)) {
             qWarning() << "setAutoStart: Eintrag konnte nicht gesetzt werden";
             return false;
         }
@@ -261,8 +261,8 @@ bool StyleHandler::setAutoStart(bool enabled)
             qWarning() << "setAutoStart: Registry-Schlüssel nicht beschreibbar";
             return false;
         }
-        settings.remove(application);
-        if (settings.contains(application)) {
+        settings.remove(m_application);
+        if (settings.contains(m_application)) {
             qWarning() << "setAutoStart: Eintrag konnte nicht entfernt werden";
             return false;
         }
@@ -286,7 +286,7 @@ void StyleHandler::indexChanged(int i)
 QString StyleHandler::getCurrentStyle()
 {
     // Standardwert "Fusion" falls noch kein Style gespeichert wurde
-    QSettings settingOwnColor(organisation, application);
+    QSettings settingOwnColor(m_organisation, m_application);
     return settingOwnColor.value(ENTRY_NAME, "Fusion").toString();
 }
 
@@ -298,7 +298,7 @@ void StyleHandler::colorSchemeChanged(Qt::ColorScheme)
 
 QString StyleHandler::getOrganisation() const
 {
-    return organisation;
+    return m_organisation;
 }
 
 QStringList StyleHandler::getFilteredStyles() const

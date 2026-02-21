@@ -143,6 +143,8 @@ private slots:
     void toggledBtn(bool checked);
 
 private:
+    /** @brief Initialisiert Animationen und gemeinsame Konstruktor-Logik. */
+    void init();
     Style::Switch style;                  ///< Visuelle Parameter (Farben, Animationsdauern)
     QPixmap       shadowPixmap;           ///< Vorgerenderte Schatten-Ellipse
     QPointer<Animator> thumbBrushAnimation; ///< Farbanimation des Thumbs

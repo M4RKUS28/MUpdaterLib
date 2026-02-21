@@ -91,7 +91,9 @@ void Animator::setCurrentValue(const QVariant& value) {
 
 // ============================================================
 // SelectionControl
-// ============================================================(QWidget* parent) : QAbstractButton(parent) {
+// ============================================================
+
+SelectionControl::SelectionControl(QWidget* parent) : QAbstractButton(parent) {
     setObjectName("SelectionControl");
     setCheckable(true);
 }

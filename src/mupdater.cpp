@@ -426,7 +426,7 @@ bool MUpdater::do_showRestartMsgBox()
 
     msgBox.exec();
 
-    if (msgBox.clickedButton() == restartButton) {
+    if (msgBox.clickedButton() == static_cast<QAbstractButton*>(restartButton)) {
         this->restartApp();
     }
 
