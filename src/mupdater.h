@@ -228,11 +228,3 @@ private slots:
 };
 
 #endif // UPDATER_H
-
-
-
-
-
-
-
-#endif // UPDATER_H
