@@ -142,11 +142,8 @@ void Switch::init() {
     trackBrushAnimation->setEndValue(colorFromOpacity(style.trackOffBrush, style.trackOffOpacity));
     thumbBrushAnimation->setStartValue(colorFromOpacity(style.thumbOffBrush, style.thumbOffOpacity));
     thumbBrushAnimation->setEndValue(colorFromOpacity(style.thumbOffBrush, style.thumbOffOpacity));
-    /* set standard palettes */
-    auto p = palette();
-    p.setColor(QPalette::Active, QPalette::ButtonText, style.textColor);
-    p.setColor(QPalette::Disabled, QPalette::ButtonText, style.textColor);
-    setPalette(p);
+    /* do NOT override ButtonText — inherit from application/window palette so
+       dark- and light-mode foreground colours are handled automatically. */
     setSizePolicy(QSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Fixed));
 }
 
@@ -176,6 +173,15 @@ Switch::Switch(QWidget* parent, QLabel *praefix) : SelectionControl(parent) {
 }
 
 Switch::Switch(const QString& text, QWidget* parent) : Switch(parent) {
+    setText(text);
+}
+
+Switch::Switch(const QString& text, int height, QWidget* parent) : SelectionControl(parent) {
+    // Scale all geometry proportionally to the requested height
+    style.height = height;
+    style.indicatorMargin = QMargins(height / 5, height / 5, height / 5, height / 5);
+    style.font = QFont("Roboto medium", qMax(6, qRound(height * 0.36)));
+    init();
     setText(text);
 }
 
@@ -219,19 +225,19 @@ void Switch::paintEvent(QPaintEvent*) {
         /* draw track */
         p.setBrush(trackBrushAnimation->currentValue().value<QColor>());
         p.setRenderHint(QPainter::Antialiasing, true);
-        p.drawRoundedRect(trackRect, CORNER_RADIUS, CORNER_RADIUS);
+        p.drawRoundedRect(trackRect, cornerRadius(), cornerRadius());
         p.setRenderHint(QPainter::Antialiasing, false);
         /* draw thumb */
         trackRect.setX(trackRect.x() - trackMargin.left() - trackMargin.right() - 2 + thumbPosAnimation->currentValue().toInt());
         auto thumbRect = trackRect;
 
         if (!shadowPixmap.isNull())
-            p.drawPixmap(thumbRect.center() - QPointF(THUMB_RADIUS, THUMB_RADIUS - 1.0), shadowPixmap);
+            p.drawPixmap(thumbRect.center() - QPointF(thumbRadius(), thumbRadius() - 1.0), shadowPixmap);
 
         p.setBrush(thumbBrushAnimation->currentValue().value<QColor>());
         p.setRenderHint(QPainter::Antialiasing, true);
         //        qDebug() << thumbRect << thumbPosAnimation->currentValue();
-        p.drawEllipse(thumbRect.center(), THUMB_RADIUS - SHADOW_ELEVATION - 1.0, THUMB_RADIUS - SHADOW_ELEVATION - 1.0);
+        p.drawEllipse(thumbRect.center(), thumbRadius() - shadowElevation() - 1.0, thumbRadius() - shadowElevation() - 1.0);
         p.setRenderHint(QPainter::Antialiasing, false);
 
         /* draw text */
@@ -248,7 +254,7 @@ void Switch::paintEvent(QPaintEvent*) {
         // draw track
         p.setBrush(style.trackDisabled);
         p.setRenderHint(QPainter::Antialiasing, true);
-        p.drawRoundedRect(trackRect, CORNER_RADIUS, CORNER_RADIUS);
+        p.drawRoundedRect(trackRect, cornerRadius(), cornerRadius());
         p.setRenderHint(QPainter::Antialiasing, false);
         // draw thumb
         p.setOpacity(1.0);
@@ -259,12 +265,12 @@ void Switch::paintEvent(QPaintEvent*) {
         auto thumbRect = trackRect;
 
         if (!shadowPixmap.isNull())
-            p.drawPixmap(thumbRect.center() - QPointF(THUMB_RADIUS, THUMB_RADIUS - 1.0), shadowPixmap);
+            p.drawPixmap(thumbRect.center() - QPointF(thumbRadius(), thumbRadius() - 1.0), shadowPixmap);
 
         p.setOpacity(1.0);
         p.setBrush(style.thumbDisabled);
         p.setRenderHint(QPainter::Antialiasing, true);
-        p.drawEllipse(thumbRect.center(), THUMB_RADIUS - SHADOW_ELEVATION - 1.0, THUMB_RADIUS - SHADOW_ELEVATION - 1.0);
+        p.drawEllipse(thumbRect.center(), thumbRadius() - shadowElevation() - 1.0, thumbRadius() - shadowElevation() - 1.0);
 
         /* draw text */
         if (text().isEmpty())
@@ -278,7 +284,7 @@ void Switch::paintEvent(QPaintEvent*) {
 }
 
 void Switch::resizeEvent(QResizeEvent* e) {
-    shadowPixmap = Style::drawShadowEllipse(THUMB_RADIUS, SHADOW_ELEVATION, QColor(0, 0, 0, 70));
+    shadowPixmap = Style::drawShadowEllipse(thumbRadius(), shadowElevation(), QColor(0, 0, 0, 70));
     SelectionControl::resizeEvent(e);
 }
 

@@ -105,14 +105,12 @@ protected:
 class Switch final : public SelectionControl {
     Q_OBJECT
 
-    static constexpr auto CORNER_RADIUS = 8.0;
-    static constexpr auto THUMB_RADIUS = 14.5;
-    static constexpr auto SHADOW_ELEVATION = 2.0;
-
 public:
     explicit Switch(QWidget* parent = nullptr, QLabel * praefix = nullptr);
     Switch(const QString& text, QWidget* parent = nullptr);
     Switch(const QString& text, const QBrush&, QWidget* parent = nullptr);
+    /** @brief Konstruktor mit expliziter Höhe in Pixeln – skaliert alles proportional. */
+    Switch(const QString& text, int height, QWidget* parent = nullptr);
     ~Switch() override;
 
     QSize sizeHint() const override final;
@@ -126,6 +124,12 @@ protected:
     QRect indicatorRect();
     /** @brief Berechnet den Anzeigebereich des Label-Texts. */
     QRect textRect();
+
+    // Geometry helpers – derived from style.height so scaling is always consistent
+    // Original reference: height=36 → thumbRadius=14.5, cornerRadius=8, shadowElevation=2
+    double thumbRadius()     const { return style.height * 0.403; }
+    double cornerRadius()    const { return (style.height - style.indicatorMargin.top() - style.indicatorMargin.bottom() - 4.0) / 2.0; }
+    double shadowElevation() const { return style.height * 0.056; }
 
     /** @brief Erstellt eine halbtransparente Farbe mit gegebener Opazität (0.0–1.0). */
     static inline QColor colorFromOpacity(const QColor& c, qreal opacity) {

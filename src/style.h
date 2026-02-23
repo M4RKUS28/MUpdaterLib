@@ -60,9 +60,9 @@ struct Animation {
  */
 struct Switch {
     Switch() :
-        height{ 36 },
-        font{ QFont("Roboto medium", 13) },
-        indicatorMargin{ QMargins(8, 8, 8, 8) },
+        height{ 26 },
+        font{ QFont("Roboto medium", 10) },
+        indicatorMargin{ QMargins(5, 5, 5, 5) },
         thumbOnBrush{ cyan500 },
         thumbOnOpacity{ 1 },
         trackOnBrush{ cyan500 },
