@@ -107,10 +107,8 @@ class Switch final : public SelectionControl {
 
 public:
     explicit Switch(QWidget* parent = nullptr, QLabel * praefix = nullptr);
-    Switch(const QString& text, QWidget* parent = nullptr);
+    Switch(const QString& text, int height = 28, QWidget* parent = nullptr);
     Switch(const QString& text, const QBrush&, QWidget* parent = nullptr);
-    /** @brief Konstruktor mit expliziter Höhe in Pixeln – skaliert alles proportional. */
-    Switch(const QString& text, int height, QWidget* parent = nullptr);
     ~Switch() override;
 
     QSize sizeHint() const override final;

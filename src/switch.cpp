@@ -172,10 +172,6 @@ Switch::Switch(QWidget* parent, QLabel *praefix) : SelectionControl(parent) {
     }
 }
 
-Switch::Switch(const QString& text, QWidget* parent) : Switch(parent) {
-    setText(text);
-}
-
 Switch::Switch(const QString& text, int height, QWidget* parent) : SelectionControl(parent) {
     // Scale all geometry proportionally to the requested height
     style.height = height;
@@ -185,7 +181,7 @@ Switch::Switch(const QString& text, int height, QWidget* parent) : SelectionCont
     setText(text);
 }
 
-Switch::Switch(const QString& text, const QBrush& brush, QWidget* parent) : Switch(text, parent) {
+Switch::Switch(const QString& text, const QBrush& brush, QWidget* parent) : Switch(text, 30, parent) {
     // Akzentfarbe anpassen: Thumb und Track im eingeschalteten Zustand einfärben
     style.thumbOnBrush = brush.color();
     style.trackOnBrush = brush.color();

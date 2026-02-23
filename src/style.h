@@ -60,7 +60,7 @@ struct Animation {
  */
 struct Switch {
     Switch() :
-        height{ 26 },
+        height{ 28 },
         font{ QFont("Roboto medium", 10) },
         indicatorMargin{ QMargins(5, 5, 5, 5) },
         thumbOnBrush{ cyan500 },
